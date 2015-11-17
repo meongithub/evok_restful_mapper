@@ -1,12 +1,11 @@
 # restful_mapper #
 
-ORM for consuming RESTful APIs in C++
+ORM for consuming the unipi evok (semi)RESTful APIs in C++
 
-[![Build status](https://secure.travis-ci.org/logandk/restful_mapper.png)](http://travis-ci.org/logandk/restful_mapper)
 
 # Introduction #
 
-**restful\_mapper** connects business objects and Representational State
+**evok\_restful\_mapper** connects business objects and Representational State
 Transfer (REST) web services. It implements object-relational mapping for REST
 web services to provide transparent proxying capabilities between a client
 (using **restful_mapper**) and a RESTful web service (that follows the
@@ -16,41 +15,15 @@ The ideas and design philosophy are directly adopted from [Active Resource][3].
 However, the API and functionality differ in some areas, where it makes sense.
 
 ## Design goals ##
-
-* _Simple_: Employ the principle of least surprise -- APIs should be clean and
-  intuitive
-* _Portable_: Support old compilers -- all code is C++03 and C
-* _Robust_: Keep the code base small -- rely on proven and stable libraries to
-  provide core functionality
-* _Internationalized_: Handle timezones and character sets automatically
-
-## RESTful web service conventions ##
-
-RESTful web services come in many different forms, which are not all suitable
-for an ORM-style mapper such as **restful_mapper**. In order to be compatible
-with as many web services as possible, **restful_mapper** complies with the
-current best-practice for creating RESTful web services with JSON.
-
-Specifically, **restful_mapper** is modelled against the [Flask-Restless][4]
-library, which provides full-featured RESTful web services that follow best-
-practice design methods.
-
-The following basic conventions must be followed by the web service:
-
-* Uses standard `DELETE`, `GET`, `POST` and `PUT` requests for CRUD-operations
-* Collection of objects should use `objects` as the root JSON key
-* Objects in a relationship should be represented as nested JSON structures
-* If authentication is used, it must be HTTP basic authentication
-
-For exact details on expected request and response formats, see [Format of requests and responses][5].
+See https://github.com/logandk/restful_mapper
 
 # Building #
 
-**restful\_mapper** is built using [CMake][6].
+**evok\_restful\_mapper** is built using [CMake][6].
 
 ## Dependencies ##
 
-The following libraries are required to build **restful_mapper**.
+The following libraries are required to build **evok_restful_mapper**.
 
 * [libcurl][7] - used for comminucating with the web service over HTTP
 * [yajl][8] - used to parse and emit JSON
@@ -79,11 +52,7 @@ This will install **restful_mapper** as a static library in the `lib` folder.
 
 ## Tests ##
 
-The test suite can be built and run using the following command.
-
-```shell
-make test
-```
+TOWRITE
 
 # Usage #
 
@@ -92,94 +61,62 @@ make test
 Before making any requests to the web service, it must be configured using the
 following methods.
 
-The root URL of the web service is specified using the `set_url` method:
+The root URL of the evok web service is specified using the `set_url` method:
 
 ```c++
-Api::set_url("http://localhost:5000/api");
+	Api api;
+	api.set_url("localhost:80/rest"); //this is the default 
 ```
 
-If the web service requires authentication, provide the username and password:
+If the evok web service is configured for authentication, provide the username and password:
 
 ```c++
-Api::set_username("admin");
-Api::set_password("test");
+api.set_username("admin");
+api.set_password("test");
 ```
 
 If you are using a proxy server, it can be specified through the `HTTP_PROXY`
 environment variable or using the `set_proxy` method:
 
 ```c++
-Api::set_proxy("http://myproxy");
+api.set_proxy("http://myproxy");
 ```
 
 ## Mapper configuration ##
 
-This example illustrates a complete object mapping:
+This example illustrates a complete Analog Input object mapping:
 
 ```c++
-using namespace std;
-using namespace restful_mapper;
-
-class User;
-class Alert;
-
-class Todo : public Model<Todo>
+class AI : public Model<AI>
 {
 public:
-  Primary id;
-  Field<string> task;
-  Field<int> priority;
-  Field<double> time;
-  Field<bool> completed;
-  Field<time_t> completed_on;
-  Foreign<int> user_id;
-  BelongsTo<User> user;
-  HasOne<Alert> alert;
+	Primary id;
+	Field <double> value;
+	Field <double> interval;
+	
+	virtual void map_set(Mapper &mapper) const
+	{
+		mapper.set("value", value);
+		mapper.set("interval", interval);
+	}
 
-  virtual void map_set(Mapper &mapper) const
-  {
-    mapper.set("id", id);
-    mapper.set("task", task);
-    mapper.set("priority", priority);
-    mapper.set("time", time);
-    mapper.set("completed", completed);
-    mapper.set("completed_on", completed_on);
-    mapper.set("user_id", user_id);
-    mapper.set("user", user);
-    mapper.set("alert", alert);
-  }
+	virtual void map_get(const Mapper &mapper)
+	{
+		mapper.get("value", value);
+		mapper.get("interval", interval);
+	}
+	
+	virtual std::string endpoint() const
+	{
+		return "/ai";
+	}
 
-  virtual void map_get(const Mapper &mapper)
-  {
-    mapper.get("id", id);
-    mapper.get("task", task);
-    mapper.get("priority", priority);
-    mapper.get("time", time);
-    mapper.get("completed", completed);
-    mapper.get("completed_on", completed_on);
-    mapper.get("user_id", user_id);
-    mapper.get("user", user);
-    mapper.get("alert", alert);
-  }
-
-  virtual std::string endpoint() const
-  {
-    return "/todo";
-  }
-
-  virtual const Primary &primary() const
-  {
-    return id;
-  }
+	virtual const Primary &primary() const
+	{
+		return id;
+	}
 };
 
-class User: public Model<User>
-{
-public:
-  Primary id;
-  HasMany<Todo> todos;
-  ...
-};
 ```
 
 An API entity is declared by creating a class that inherits from and follows the
@@ -218,96 +155,23 @@ Using the models defined above, the following operations are made available by
 ### Requesting data ###
 
 ```c++
-// Find a single item by id
-Todo t = Todo::find(2);
-
-// Outputting fields
-cout << t.task.get();
-
-// Explicit conversions
-cout << (string) t.task;
-
-// Reload data from server
-t.reload();
-
-// Get all items in collection
-Todo::Collection todos = Todo::find_all();
-
-// Find an item in the collection by id
-todos.find(4);
-
-// Find all items in collection where task is "Do something"
-todos.find("task", "Do something");
-
-// Find the first item in collection that has been completed
-todos.find_first("completed", true);
+	AI ai = AI::find(1, api);	
+	double value = ai.value;
 ```
 
 ### Saving data ###
 
 ```c++
-// Create a new item
-Todo new_todo;
-new_todo.task = "Use restful_mapper";
-new_todo.save();
-
-// Update an existing item
-Todo old_todo = Todo::find(2);
-old_todo.completed = true;
-old_todo.save();
-
-// Deleting an item
-old_todo.destroy();
-
-// Create a clone with no id set (i.e. a new database object)
-Todo todo_clone = old_todo.clone();
-todo_clone.save();
+	Relay relay = Relay::find(8, api);	
+	relay.value = 1;
+	relay.save(api);
 ```
 
 ### Relationships ###
-
-```c++
-// Find an item including related items
-User u = User::find(1);
-
-// Get a related todo
-u.todos[2].task = "Do something else";
-
-// Delete last item
-u.todos.pop_back();
-
-// Add a new related item
-Todo new_todo;
-new_todo.task = "Use restful_mapper";
-u.todos.push_back(new_todo);
-
-// Save user including all changes to related todos - will delete one, update one and add one todo
-u.save();
-
-// Objects in one-to-one and many-to-one relationships are managed pointers
-Todo t = Todo::find(2);
-cout << t.user->email.get();
-```
+See https://github.com/logandk/restful_mapper
 
 ### Querying ###
-
-Supports the query operations [specified][11] by [Flask-Restless][4].
-
-```c++
-// Query a single item
-Query q;
-q("task").like("Do someth%");
-q("completed").eq(true);
-
-Todo todo = Todo::find(q);
-
-// Query a collection of items
-Query q;
-q("time").gt("1.45").lt("3.0");
-q.order_by_asc(q.field("priority"));
-
-Todo::Collection todos = Todo::find_all(q);
-```
+See https://github.com/logandk/restful_mapper
 
 ### Exceptions ###
 
