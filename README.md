@@ -75,8 +75,11 @@ api.set_username("admin");
 api.set_password("test");
 ```
 
+
 If you are using a proxy server, it can be specified through the `HTTP_PROXY`
 environment variable or using the `set_proxy` method:
+
+See \evokTests for complete examples.
 
 ```c++
 api.set_proxy("http://myproxy");
@@ -118,6 +121,7 @@ public:
 };
 
 ```
+See \evokMaps for mapping for Digital Input and Relays.
 
 An API entity is declared by creating a class that inherits from and follows the
 interface defined in `restful_mapper::Model`.
@@ -157,6 +161,8 @@ Using the models defined above, the following operations are made available by
 ```c++
 	AI ai = AI::find(1, api);	
 	double value = ai.value;
+	
+	See \evokTests for complete examples.
 ```
 
 ### Saving data ###
@@ -165,6 +171,8 @@ Using the models defined above, the following operations are made available by
 	Relay relay = Relay::find(8, api);	
 	relay.value = 1;
 	relay.save(api);
+	
+	See \evokTests for complete examples.
 ```
 
 ### Relationships ###
